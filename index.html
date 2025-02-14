@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style>
+      body {
+        font-family: Arial, Helvetica, sans-serif;
+        margin: 0;
+        padding: 0;
+        background-color: #f2f2f2;
+      }
+
+      /* Navbar */
+      .navbar {
+        background-color: #04aa6d;
+        overflow: hidden;
+        padding: 10px 20px;
+        color: white;
+        font-size: 22px;
+        font-weight: bold;
+      }
+
+      /* Sidebar */
+      .sidebar {
+        position: fixed;
+        top: 60px;
+        left: 10px;
+        width: 150px;
+        display: flex;
+        flex-direction: column;
+      }
+
+      .sidebar button {
+        background-color: #2196f3;
+        color: white;
+        padding: 14px;
+        margin: 10px 0;
+        border: none;
+        cursor: pointer;
+        width: 100%;
+        font-size: 16px;
+        text-align: left;
+      }
+
+      .sidebar button:hover {
+        background-color: #0b7dda;
+      }
+
+      /* Login Form */
+      .login-container {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background: white;
+        padding: 20px;
+        border-radius: 10px;
+        box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);
+        text-align: center;
+        width: 350px;
+        display: none;
+      }
+
+      /* Input fields */
+      input[type="text"],
+      input[type="password"] {
+        width: 100%;
+        padding: 12px;
+        margin: 8px 0;
+        border: 1px solid #ccc;
+        box-sizing: border-box;
+      }
+
+      /* Password Field with Eye Icon */
+      .password-container {
+        position: relative;
+      }
+
+      .password-container input {
+        width: 100%;
+      }
+
+      .password-container .eye-icon {
+        position: absolute;
+        right: 10px;
+        top: 50%;
+        transform: translateY(-50%);
+        cursor: pointer;
+        font-size: 18px;
+      }
+
+      /* Buttons */
+      button {
+        background-color: #04aa6d;
+        color: white;
+        padding: 12px;
+        margin: 8px 0;
+        border: none;
+        cursor: pointer;
+        width: 100%;
+        font-size: 16px;
+      }
+
+      button:hover {
+        opacity: 0.8;
+      }
+
+      /* Close Button */
+      .close-btn {
+        background-color: #f44336;
+        padding: 8px;
+        width: auto;
+      }
+
+      /* Message Box */
+      .message {
+        color: white;
+        padding: 10px;
+        text-align: center;
+        display: none;
+        margin-top: 10px;
+      }
+
+      .success {
+        background-color: #4caf50;
+      }
+      .error {
+        background-color: #f44336;
+      }
+    </style>
+  </head>
+  <body>
+    <!-- Navbar -->
+    <div class="navbar">Class Scheduling</div>
+
+    <!-- Sidebar -->
+    <div class="sidebar">
+      <button onclick="showForm('student')">Student Login</button>
+      <button onclick="showForm('teacher')">Teacher Login</button>
+      <button onclick="showForm('admin')">Admin Login</button>
+    </div>
+
+    <!-- Student Login Form -->
+    <div id="student-form" class="login-container">
+      <h2>Student Login</h2>
+      <input
+        type="text"
+        id="student-username"
+        placeholder="Enter Username"
+        required
+      />
+
+      <div class="password-container">
+        <input
+          type="password"
+          id="student-password"
+          placeholder="Enter Password"
+          required
+        />
+        <span
+          class="eye-icon"
+          onmouseover="togglePassword('student-password', true)"
+          onmouseout="togglePassword('student-password', false)"
+          >👁️</span
+        >
+      </div>
+
+      <button onclick="validateLogin('student')">Login</button>
+      <button class="close-btn" onclick="closeForm('student')">Close</button>
+      <div id="student-message" class="message"></div>
+    </div>
+
+    <!-- Teacher Login Form -->
+    <div id="teacher-form" class="login-container">
+      <h2>Teacher Login</h2>
+      <input
+        type="text"
+        id="teacher-username"
+        placeholder="Enter Username"
+        required
+      />
+
+      <div class="password-container">
+        <input
+          type="password"
+          id="teacher-password"
+          placeholder="Enter Password"
+          required
+        />
+        <span
+          class="eye-icon"
+          onmouseover="togglePassword('teacher-password', true)"
+          onmouseout="togglePassword('teacher-password', false)"
+          >👁️</span
+        >
+      </div>
+
+      <button onclick="validateLogin('teacher')">Login</button>
+      <button class="close-btn" onclick="closeForm('teacher')">Close</button>
+      <div id="teacher-message" class="message"></div>
+    </div>
+
+    <!-- Admin Login Form -->
+    <div id="admin-form" class="login-container">
+      <h2>Admin Login</h2>
+      <input
+        type="text"
+        id="admin-username"
+        placeholder="Enter Username"
+        required
+      />
+
+      <div class="password-container">
+        <input
+          type="password"
+          id="admin-password"
+          placeholder="Enter Password"
+          required
+        />
+        <span
+          class="eye-icon"
+          onmouseover="togglePassword('admin-password', true)"
+          onmouseout="togglePassword('admin-password', false)"
+          >👁️</span
+        >
+      </div>
+
+      <button onclick="validateLogin('admin')">Login</button>
+      <button class="close-btn" onclick="closeForm('admin')">Close</button>
+      <div id="admin-message" class="message"></div>
+    </div>
+
+    <script>
+      function togglePassword(fieldId, show) {
+        let passwordField = document.getElementById(fieldId);
+        passwordField.type = show ? "text" : "password";
+      }
+
+      function showForm(userType) {
+        closeForm("student");
+        closeForm("teacher");
+        closeForm("admin");
+
+        document.getElementById(userType + "-form").style.display = "block";
+      }
+
+      function closeForm(userType) {
+        document.getElementById(userType + "-form").style.display = "none";
+      }
+
+      function validateLogin(userType) {
+        let username = document.getElementById(userType + "-username").value;
+        let password = document.getElementById(userType + "-password").value;
+        let messageBox = document.getElementById(userType + "-message");
+
+        let validCredentials = {
+          student: {
+            username: "gaurav",
+            password: "1218",
+            redirect: "student.html",
+          },
+          teacher: [
+            { username: "singh", password: "1218", redirect: "teacher1.html" },
+            { username: "sharma", password: "1218", redirect: "teacher2.html" },
+          ],
+          admin: {
+            username: "GHOST",
+            password: "1218",
+            redirect: "admin.html",
+          },
+        };
+
+        if (userType === "teacher") {
+          let validTeacher = validCredentials.teacher.find(
+            (t) => t.username === username && t.password === password
+          );
+
+          if (validTeacher) {
+            messageBox.innerHTML = "Login Successful!";
+            messageBox.className = "message success";
+            messageBox.style.display = "block";
+
+            setTimeout(() => {
+              window.open(validTeacher.redirect, "_blank");
+            }, 1000);
+            return;
+          }
+        } else if (
+          username === validCredentials[userType].username &&
+          password === validCredentials[userType].password
+        ) {
+          messageBox.innerHTML = "Login Successful!";
+          messageBox.className = "message success";
+          messageBox.style.display = "block";
+
+          setTimeout(() => {
+            window.open(validCredentials[userType].redirect, "_blank");
+          }, 1000);
+          return;
+        }
+
+        messageBox.innerHTML = "Incorrect Username or Password!";
+        messageBox.className = "message error";
+        messageBox.style.display = "block";
+      }
+    </script>
+  </body>
+</html>

@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Admin - Combined Schedule</title>
+    <style>
+      body {
+        font-family: "Poppins", sans-serif;
+        margin: 0;
+        padding: 0;
+        background-color: #f8f9fa;
+        text-align: center;
+      }
+
+      .navbar {
+        background-color: #343a40;
+        color: white;
+        padding: 15px;
+        font-size: 22px;
+        font-weight: bold;
+        text-align: center;
+        border-radius: 10px;
+        margin: 20px auto;
+        width: 90%;
+        max-width: 1200px;
+      }
+
+      .container {
+        width: 90%;
+        margin-top: 20px;
+        background: white;
+        padding: 20px;
+        border-radius: 10px;
+        display: inline-block;
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 10px;
+      }
+
+      th,
+      td {
+        border: 1px solid #dee2e6;
+        padding: 12px;
+        text-align: center;
+        font-size: 16px;
+      }
+
+      th {
+        background-color: #007bff;
+        color: white;
+      }
+
+      .ai {
+        background-color: #28a745;
+        color: white;
+        font-weight: bold;
+      }
+      .ml {
+        background-color: #ffc107;
+        color: black;
+        font-weight: bold;
+      }
+      .conflict {
+        background-color: #dc3545;
+        color: white;
+        font-weight: bold;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="navbar">📊 Admin Panel - AI & ML Timetable</div>
+
+    <div class="container">
+      <h3>Finalized Schedule for AI & ML</h3>
+      <table id="adminScheduleTable">
+        <tr>
+          <th>Time</th>
+          <th>Monday</th>
+          <th>Tuesday</th>
+          <th>Wednesday</th>
+          <th>Thursday</th>
+          <th>Friday</th>
+        </tr>
+      </table>
+    </div>
+
+    <script>
+      let timeSlots = [
+        "9:00 AM - 10:00 AM",
+        "10:00 AM - 11:00 AM",
+        "11:00 AM - 12:00 PM",
+        "12:00 PM - 1:00 PM",
+        "1:00 PM - 2:00 PM",
+        "2:00 PM - 3:00 PM",
+        "3:00 PM - 4:00 PM",
+        "4:00 PM - 5:00 PM",
+        "5:00 PM - 6:00 PM",
+      ];
+
+      function loadFinalizedSchedules() {
+        let aiSchedule =
+          JSON.parse(localStorage.getItem("finalizedTeacher1Schedule")) || [];
+        let mlSchedule =
+          JSON.parse(localStorage.getItem("finalizedTeacher2Schedule")) || [];
+        let table = document.getElementById("adminScheduleTable");
+
+        timeSlots.forEach((slot, rowIndex) => {
+          let newRow = table.insertRow();
+          newRow.insertCell(0).innerText = slot;
+
+          for (let colIndex = 1; colIndex <= 5; colIndex++) {
+            let cell = newRow.insertCell(colIndex);
+            let aiSlot =
+              aiSchedule[rowIndex] &&
+              aiSchedule[rowIndex][colIndex] === "Class Assigned";
+            let mlSlot =
+              mlSchedule[rowIndex] &&
+              mlSchedule[rowIndex][colIndex] === "Class Assigned";
+
+            if (aiSlot && mlSlot) {
+              cell.innerText = "Conflict!";
+              cell.classList.add("conflict");
+            } else if (aiSlot) {
+              cell.innerText = "AI";
+              cell.classList.add("ai");
+            } else if (mlSlot) {
+              cell.innerText = "ML";
+              cell.classList.add("ml");
+            } else {
+              cell.innerText = "-";
+            }
+          }
+        });
+      }
+
+      loadFinalizedSchedules();
+    </script>
+  </body>
+</html>

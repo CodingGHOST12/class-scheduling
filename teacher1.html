@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Teacher 1 Scheduling - AI</title>
+    <style>
+        /* General Styles */
+        body {
+            font-family: "Poppins", sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f8f9fa;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        /* Navbar */
+        .navbar {
+            background-color: #343a40;
+            color: white;
+            padding: 15px 20px;
+            font-size: 20px;
+            font-weight: bold;
+            width: 90%;
+            max-width: 1200px;
+            margin: 10px auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-radius: 10px;
+        }
+
+        /* Buttons */
+        .reset-btn, .finalize-btn, .save-btn {
+            padding: 8px 15px;
+            font-size: 16px;
+            border: none;
+            cursor: pointer;
+            border-radius: 5px;
+            margin-left: 10px;
+        }
+
+        .reset-btn { background-color: #ff3b30; color: white; }
+        .reset-btn:hover { background-color: #d32f2f; }
+
+        .finalize-btn { background-color: #28a745; color: white; }
+        .finalize-btn:hover { background-color: #218838; }
+
+        .save-btn {
+            background-color: #007bff;
+            color: white;
+            padding: 12px 25px;
+            font-size: 18px;
+            border: none;
+            cursor: pointer;
+            margin-top: 20px;
+            border-radius: 5px;
+        }
+
+        .save-btn:hover { background-color: #0056b3; transform: scale(1.05); }
+
+        /* Container */
+        .container {
+            width: 90%;
+            margin-top: 20px;
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+        }
+
+        /* Table Styling */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+            border-radius: 8px;
+        }
+
+        th, td {
+            border: 1px solid #dee2e6;
+            padding: 12px;
+            text-align: center;
+            font-size: 16px;
+        }
+
+        th { background-color: #007bff; color: white; }
+        td:hover { background-color: #f1f1f1; cursor: pointer; }
+        
+        /* Selected Slot */
+        .selected { background-color: #28a745 !important; color: white; font-weight: bold; }
+        
+        /* Locked Slot (After Finalization) */
+        .locked { background-color: #6c757d !important; color: white; font-weight: bold; pointer-events: none; }
+
+        /* Finalized Timetable Display */
+        .finalized-container {
+            width: 90%;
+            margin-top: 30px;
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="navbar">
+        📅 Teacher 1 Scheduling - Artificial Intelligence
+        <button class="reset-btn" onclick="resetSchedule()">Reset</button>
+    </div>
+
+    <div class="container">
+        <h3>Select and Save Class Slots</h3>
+        <table id="teacher1ScheduleTable">
+            <tr>
+                <th>Time</th>
+                <th>Monday</th>
+                <th>Tuesday</th>
+                <th>Wednesday</th>
+                <th>Thursday</th>
+                <th>Friday</th>
+            </tr>
+        </table>
+    </div>
+
+    <button class="save-btn" id="saveBtn" onclick="saveTeacher1Schedule()">Save Schedule</button>
+    <button class="finalize-btn" id="finalizeBtn" onclick="finalizeSchedule()">Finalize Timetable</button>
+
+    <!-- Finalized Timetable Section -->
+    <div class="finalized-container" id="finalizedContainer">
+        <h3>Finalized Timetable</h3>
+        <table id="finalizedScheduleTable">
+            <tr>
+                <th>Time</th>
+                <th>Monday</th>
+                <th>Tuesday</th>
+                <th>Wednesday</th>
+                <th>Thursday</th>
+                <th>Friday</th>
+            </tr>
+        </table>
+    </div>
+
+    <script>
+        let timeSlots = [
+            "9:00 AM - 10:00 AM", "10:00 AM - 11:00 AM", "11:00 AM - 12:00 PM",
+            "12:00 PM - 1:00 PM", "1:00 PM - 2:00 PM", "2:00 PM - 3:00 PM",
+            "3:00 PM - 4:00 PM", "4:00 PM - 5:00 PM", "5:00 PM - 6:00 PM"
+        ];
+
+        function createTeacher1Timetable() {
+            let table = document.getElementById("teacher1ScheduleTable");
+            timeSlots.forEach((time) => {
+                let row = table.insertRow();
+                let timeCell = row.insertCell(0);
+                timeCell.innerText = time;
+
+                for (let i = 1; i <= 5; i++) {
+                    let cell = row.insertCell(i);
+                    cell.innerText = "Click to Assign";
+                    cell.onclick = function () { selectSlot(cell); };
+                }
+            });
+
+            loadTeacher1Schedule();
+            checkFinalized();
+        }
+
+        function selectSlot(cell) {
+            if (!cell.classList.contains("selected")) {
+                cell.classList.add("selected");
+                cell.innerText = "Class Assigned";
+            } else {
+                cell.classList.remove("selected");
+                cell.innerText = "Click to Assign";
+            }
+        }
+
+        function saveTeacher1Schedule() {
+            let schedule = [];
+            let table = document.getElementById("teacher1ScheduleTable");
+
+            for (let row of table.rows) {
+                if (row.rowIndex === 0) continue;
+                let rowData = [row.cells[0].innerText];
+
+                for (let i = 1; i <= 5; i++) {
+                    rowData.push(row.cells[i].classList.contains("selected") ? "Class Assigned" : "");
+                }
+                schedule.push(rowData);
+            }
+
+            localStorage.setItem("teacher1Schedule", JSON.stringify(schedule));
+            document.getElementById("finalizeBtn").style.display = "inline-block";
+        }
+
+        function finalizeSchedule() {
+            let schedule = JSON.parse(localStorage.getItem("teacher1Schedule")) || [];
+
+            // Replace "Class Assigned" with "AI"
+            let updatedSchedule = schedule.map(row => 
+                row.map(cell => (cell === "Class Assigned" ? "AI" : cell))
+            );
+
+            localStorage.setItem("finalizedTeacher1Schedule", JSON.stringify(updatedSchedule));
+            alert("✅ Timetable finalized! No further changes allowed.");
+            checkFinalized();
+        }
+
+        function checkFinalized() {
+            let finalizedSchedule = JSON.parse(localStorage.getItem("finalizedTeacher1Schedule"));
+            if (finalizedSchedule) {
+                document.getElementById("finalizedContainer").style.display = "block";
+                let table = document.getElementById("finalizedScheduleTable");
+
+                // Clear previous table data
+                table.innerHTML = `<tr>
+                    <th>Time</th>
+                    <th>Monday</th>
+                    <th>Tuesday</th>
+                    <th>Wednesday</th>
+                    <th>Thursday</th>
+                    <th>Friday</th>
+                </tr>`;
+
+                finalizedSchedule.forEach((row) => {
+                    let newRow = table.insertRow();
+                    row.forEach((cellText) => {
+                        let cell = newRow.insertCell();
+                        cell.innerText = cellText || "-";
+                    });
+                });
+
+                document.getElementById("saveBtn").style.display = "none";
+                document.getElementById("finalizeBtn").style.display = "none";
+            }
+        }
+
+        createTeacher1Timetable();
+    </script>
+
+</body>
+</html>

@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Teacher 2 Scheduling - Machine Learning</title>
+    <style>
+        body {
+            font-family: "Poppins", sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f8f9fa;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .navbar {
+            background-color: #343a40;
+            color: white;
+            padding: 15px 20px;
+            font-size: 20px;
+            font-weight: bold;
+            width: 90%;
+            max-width: 1200px;
+            margin: 10px auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-radius: 10px;
+        }
+
+        .reset-btn, .finalize-btn, .save-btn {
+            padding: 8px 15px;
+            font-size: 16px;
+            border: none;
+            cursor: pointer;
+            border-radius: 5px;
+            margin-left: 10px;
+        }
+
+        .reset-btn { background-color: #ff3b30; color: white; }
+        .finalize-btn { background-color: #28a745; color: white; }
+        .save-btn {
+            background-color: #007bff;
+            color: white;
+            padding: 12px 25px;
+            font-size: 18px;
+        }
+        .save-btn:hover, .finalize-btn:hover {
+            transform: scale(1.05);
+        }
+
+        .container {
+            width: 90%;
+            margin-top: 20px;
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+            border-radius: 8px;
+        }
+
+        th, td {
+            border: 1px solid #dee2e6;
+            padding: 12px;
+            text-align: center;
+            font-size: 16px;
+        }
+
+        th { background-color: #007bff; color: white; }
+        td:hover { background-color: #f1f1f1; cursor: pointer; }
+
+        .unavailable {
+            background-color: #dc3545 !important;
+            color: white;
+            pointer-events: none;
+        }
+        .selected {
+            background-color: #28a745 !important;
+            color: white;
+            font-weight: bold;
+        }
+        .locked {
+            background-color: #6c757d !important;
+            color: white;
+            pointer-events: none;
+        }
+
+        .finalized-container {
+            width: 90%;
+            margin-top: 30px;
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="navbar">
+        📅 Teacher 2 Scheduling - Machine Learning
+        <button class="reset-btn" onclick="resetSchedule()">Reset</button>
+    </div>
+
+    <div class="container">
+        <h3>Select and Save Class Slots</h3>
+        <table id="teacher2ScheduleTable">
+            <tr>
+                <th>Time</th>
+                <th>Monday</th>
+                <th>Tuesday</th>
+                <th>Wednesday</th>
+                <th>Thursday</th>
+                <th>Friday</th>
+            </tr>
+        </table>
+    </div>
+
+    <button class="save-btn" onclick="saveTeacher2Schedule()">Save Schedule</button>
+    <button class="finalize-btn" onclick="finalizeSchedule()">Finalize Timetable</button>
+
+    <div class="finalized-container" id="finalizedContainer">
+        <h3>Finalized Timetable</h3>
+        <table id="finalizedScheduleTable">
+            <tr>
+                <th>Time</th>
+                <th>Monday</th>
+                <th>Tuesday</th>
+                <th>Wednesday</th>
+                <th>Thursday</th>
+                <th>Friday</th>
+            </tr>
+        </table>
+    </div>
+
+    <script>
+        let timeSlots = [
+            "9:00 AM - 10:00 AM",
+            "10:00 AM - 11:00 AM",
+            "11:00 AM - 12:00 PM",
+            "12:00 PM - 1:00 PM",
+            "1:00 PM - 2:00 PM",
+            "2:00 PM - 3:00 PM",
+            "3:00 PM - 4:00 PM",
+            "4:00 PM - 5:00 PM",
+            "5:00 PM - 6:00 PM"
+        ];
+
+        function createTeacher2Timetable() {
+            let table = document.getElementById("teacher2ScheduleTable");
+            let teacher1Schedule = JSON.parse(localStorage.getItem("teacher1Schedule")) || [];
+
+            timeSlots.forEach((time, rowIndex) => {
+                let row = table.insertRow();
+                let timeCell = row.insertCell(0);
+                timeCell.innerText = time;
+
+                for (let colIndex = 1; colIndex <= 5; colIndex++) {
+                    let cell = row.insertCell(colIndex);
+
+                    if (teacher1Schedule[rowIndex] && teacher1Schedule[rowIndex][colIndex] === "Class Assigned") {
+                        cell.innerText = "Unavailable";
+                        cell.classList.add("unavailable");
+                    } else {
+                        cell.innerText = "Click to Assign";
+                        cell.onclick = function () {
+                            selectSlot(cell);
+                        };
+                    }
+                }
+            });
+
+            loadTeacher2Schedule();
+            checkFinalized();
+        }
+
+        function selectSlot(cell) {
+            if (!cell.classList.contains("selected")) {
+                cell.classList.add("selected");
+                cell.innerText = "Class Assigned";
+            } else {
+                cell.classList.remove("selected");
+                cell.innerText = "Click to Assign";
+            }
+        }
+
+        function saveTeacher2Schedule() {
+            let schedule = [];
+            let table = document.getElementById("teacher2ScheduleTable");
+
+            for (let row of table.rows) {
+                if (row.rowIndex === 0) continue;
+                let rowData = [row.cells[0].innerText];
+
+                for (let i = 1; i <= 5; i++) {
+                    rowData.push(row.cells[i].classList.contains("selected") ? "Class Assigned" : "");
+                }
+                schedule.push(rowData);
+            }
+
+            localStorage.setItem("teacher2Schedule", JSON.stringify(schedule));
+            document.getElementById("finalizeBtn").style.display = "inline-block";
+        }
+
+        function finalizeSchedule() {
+            let schedule = JSON.parse(localStorage.getItem("teacher2Schedule")) || [];
+
+            let updatedSchedule = schedule.map(row => 
+                row.map(cell => (cell === "Class Assigned" ? "ML" : cell))
+            );
+
+            localStorage.setItem("finalizedTeacher2Schedule", JSON.stringify(updatedSchedule));
+            alert("✅ Timetable finalized! No further changes allowed.");
+            checkFinalized();
+        }
+
+        function checkFinalized() {
+            let finalizedSchedule = JSON.parse(localStorage.getItem("finalizedTeacher2Schedule"));
+            if (finalizedSchedule) {
+                document.getElementById("finalizedContainer").style.display = "block";
+                let table = document.getElementById("finalizedScheduleTable");
+                table.innerHTML = ""; 
+
+                let headerRow = table.insertRow();
+                let headers = ["Time", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
+                headers.forEach((headerText) => {
+                    let th = document.createElement("th");
+                    th.innerText = headerText;
+                    headerRow.appendChild(th);
+                });
+
+                finalizedSchedule.forEach((row) => {
+                    let newRow = table.insertRow();
+                    row.forEach((cellText) => {
+                        let cell = newRow.insertCell();
+                        cell.innerText = cellText || "-";
+                    });
+                });
+
+                document.getElementById("saveBtn").style.display = "none";
+                document.getElementById("finalizeBtn").style.display = "none";
+            }
+        }
+
+        createTeacher2Timetable();
+    </script>
+
+</body>
+</html>
