@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Class Scheduling</title>
+    <style>
+        
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .phase { display: none; margin: 20px 0; }
+        .grid { display: grid; gap: 5px; }
+        .slot { border: 1px solid #ddd; padding: 8px; cursor: pointer; font-size: 0.9em; }
+        .selected { background: #90EE90 !important; }
+        .unavailable { background: #FFB6C1 !important; cursor: not-allowed; }
+        .available { background: white; }
+        .info { margin: 10px 0; padding: 10px; background: #f0f0f0; }
+        table { border-collapse: collapse; margin: 20px 0; }
+        td, th { border: 1px solid #ddd; padding: 8px; }
+        button { margin: 5px; padding: 8px 15px; }
+        .small-text { font-size: 0.8em; color: #666; }
+        .room-section { margin: 20px 0; border: 1px solid #ccc; padding: 10px; }
+        .room-header { font-weight: bold; margin-bottom: 10px; }
+    
+    </style>
+</head>
+<body>
+    <div id="init">
+        <button onclick="initializeSystem()">Start Scheduling</button>
+    </div>
+    <div id="teacherPhase" class="phase">
+        <h2>Teacher Scheduling</h2>
+        <div id="currentTeacher"></div>
+        <div id="teacherGrid"></div>
+        <div>
+            <button onclick="finalizeTeacherSlots()">Finalize</button>
+            <button onclick="autoSelectTeacher()">Auto-Select Random</button>
+        </div>
+    </div>
+    <div id="studentPhase" class="phase">
+        <h2>Student Enrollment</h2>
+        <div id="currentStudent"></div>
+        <div id="studentGrid"></div>
+        <div>
+            <button onclick="finalizeStudentSlots()">Finalize</button>
+            <button onclick="autoSelectStudent()">Auto-Select 1</button>
+            <button onclick="autoSelect10Students()">Auto-Select 10</button>
+        </div>
+    </div>
+    <div id="viewPhase" class="phase">
+        <h2>Timetable Viewer</h2>
+        <select id="viewSelect" onchange="showTimetable()">
+            <option value="">Select View</option>
+            <option value="teachers">Teachers</option>
+            <option value="students">Students</option>
+            <option value="rooms">Rooms</option>
+        </select>
+        <div id="timetableView"></div>
+    </div>
+    <script>
+        // System Configuration
+        const DAYS = 5;
+        const SLOTS_PER_DAY = 6;
+        const ROOMS = 5;
+        const COURSES = [
+            { id: 1, name: 'Math', maxPerSlot: 30, teachers: [] },
+            { id: 2, name: 'Science', maxPerSlot: 30, teachers: [] },
+            { id: 3, name: 'History', maxPerSlot: 30, teachers: [] },
+            { id: 4, name: 'English', maxPerSlot: 30, teachers: [] },
+            { id: 5, name: 'Art', maxPerSlot: 30, teachers: [] }
+        ];
+        const TEACHERS_PER_COURSE = 2;
+        const STUDENTS = 100;
+        const TEACHER_SLOTS_REQUIRED = 4;
+        
+        let teachers = [];
+        let students = [];
+        let schedule = Array.from({length: DAYS}, () => 
+            Array.from({length: ROOMS}, () => 
+                Array.from({length: SLOTS_PER_DAY}, () => ({
+                    course: null,
+                    teacher: null,
+                    students: []
+                }))
+            )
+        );
+        let currentTeacherIndex = 0;
+        let currentStudentIndex = 0;
+        
+        function initializeSystem() {
+            // Initialize teachers
+            COURSES.forEach(course => {
+                for(let i = 0; i < TEACHERS_PER_COURSE; i++) {
+                    const teacher = {
+                        id: teachers.length + 1,
+                        name: `Prof. ${course.name.substr(0,3)}-${i+1}`,
+                        course: course.id,
+                        slots: []
+                    };
+                    teachers.push(teacher);
+                    course.teachers.push(teacher.id);
+                }
+            });
+        
+            // Initialize students
+            students = Array.from({length: STUDENTS}, (_, i) => ({
+                id: i+1,
+                name: `Student ${i+1}`,
+                timetable: {}
+            }));
+        
+            document.getElementById('init').style.display = 'none';
+            startTeacherPhase();
+        }
+        
+        // Teacher Phase Logic
+        function startTeacherPhase() {
+            if(currentTeacherIndex >= teachers.length) {
+                startStudentPhase();
+                return;
+            }
+            
+            const teacher = teachers[currentTeacherIndex];
+            document.getElementById('teacherPhase').style.display = 'block';
+            document.getElementById('currentTeacher').innerHTML = `
+                <div class="info">
+                    Teacher: <strong>${teacher.name}</strong><br>
+                    Course: ${COURSES.find(c => c.id === teacher.course).name}<br>
+                    Selected: ${teacher.slots.length}/${TEACHER_SLOTS_REQUIRED} slots
+                </div>
+            `;
+            renderTeacherGrid(teacher);
+        }
+        
+        function renderTeacherGrid(teacher) {
+            const grid = document.getElementById('teacherGrid');
+            grid.innerHTML = '';
+            
+            for(let r = 0; r < ROOMS; r++) {
+                const roomSection = document.createElement('div');
+                roomSection.className = 'room-section';
+                roomSection.innerHTML = `<div class="room-header">Room ${r+1}</div>`;
+                
+                const roomGrid = document.createElement('div');
+                roomGrid.className = 'grid';
+                roomGrid.style.gridTemplateColumns = `repeat(${SLOTS_PER_DAY + 1}, 1fr)`;
+                
+                // Header
+                roomGrid.appendChild(createHeaderCell('Day/Slot'));
+                for(let t = 0; t < SLOTS_PER_DAY; t++) {
+                    roomGrid.appendChild(createHeaderCell(t+1));
+                }
+                
+                // Rows
+                for(let d = 0; d < DAYS; d++) {
+                    roomGrid.appendChild(createHeaderCell(d+1));
+                    for(let t = 0; t < SLOTS_PER_DAY; t++) {
+                        const cell = document.createElement('div');
+                        const slot = schedule[d][r][t];
+                        const isSelected = teacher.slots.some(s => 
+                            s.day === d && s.room === r && s.slot === t
+                        );
+                        
+                        cell.className = `slot ${isSelected ? 'selected' : 
+                            slot.course ? 'unavailable' : 'available'}`;
+                        
+                        cell.innerHTML = slot.course ? 
+                            `${COURSES.find(c => c.id === slot.course).name}` : 
+                            (isSelected ? '✓' : '');
+        
+                        if(!slot.course) {
+                            cell.onclick = () => toggleTeacherSlot(teacher, d, r, t);
+                        }
+                        roomGrid.appendChild(cell);
+                    }
+                }
+                roomSection.appendChild(roomGrid);
+                grid.appendChild(roomSection);
+            }
+        }
+        
+        function toggleTeacherSlot(teacher, day, room, slot) {
+            const index = teacher.slots.findIndex(s => 
+                s.day === day && s.room === room && s.slot === slot
+            );
+            
+            if(index === -1 && teacher.slots.length < TEACHER_SLOTS_REQUIRED) {
+                teacher.slots.push({ day, room, slot });
+            } else {
+                teacher.slots.splice(index, 1);
+            }
+            renderTeacherGrid(teacher);
+        }
+        
+        function autoSelectTeacher() {
+            const teacher = teachers[currentTeacherIndex];
+            const availableSlots = [];
+            
+            for(let d = 0; d < DAYS; d++) {
+                for(let r = 0; r < ROOMS; r++) {
+                    for(let t = 0; t < SLOTS_PER_DAY; t++) {
+                        if(!schedule[d][r][t].course) {
+                            availableSlots.push({ day: d, room: r, slot: t });
+                        }
+                    }
+                }
+            }
+            
+            const needed = TEACHER_SLOTS_REQUIRED - teacher.slots.length;
+            if(availableSlots.length >= needed) {
+                const selected = availableSlots.sort(() => Math.random() - 0.5).slice(0, needed);
+                teacher.slots.push(...selected);
+            }
+            
+            renderTeacherGrid(teacher);
+        }
+        
+        function finalizeTeacherSlots() {
+            const teacher = teachers[currentTeacherIndex];
+            if(teacher.slots.length !== TEACHER_SLOTS_REQUIRED) {
+                alert(`Please select exactly ${TEACHER_SLOTS_REQUIRED} slots!`);
+                return;
+            }
+            
+            teacher.slots.forEach(({ day, room, slot }) => {
+                schedule[day][room][slot] = {
+                    course: teacher.course,
+                    teacher: teacher.id,
+                    students: []
+                };
+            });
+            
+            currentTeacherIndex++;
+            if(currentTeacherIndex < teachers.length) {
+                startTeacherPhase();
+            } else {
+                document.getElementById('teacherPhase').style.display = 'none';
+                startStudentPhase();
+            }
+        }
+        
+        // Student Phase Logic
+        function startStudentPhase() {
+            if(currentStudentIndex >= students.length) {
+                document.getElementById('studentPhase').style.display = 'none';
+                document.getElementById('viewPhase').style.display = 'block';
+                return;
+            }
+            
+            const student = students[currentStudentIndex];
+            document.getElementById('studentPhase').style.display = 'block';
+            document.getElementById('currentStudent').innerHTML = `
+                <div class="info">
+                    Student: <strong>${student.name}</strong><br>
+                    Progress: ${currentStudentIndex + 1}/${STUDENTS}
+                </div>
+            `;
+            renderStudentGrid(student);
+        }
+        
+        function renderStudentGrid(student) {
+            const grid = document.getElementById('studentGrid');
+            grid.innerHTML = '';
+            
+            COURSES.forEach(course => {
+                const courseSection = document.createElement('div');
+                courseSection.className = 'room-section';
+                courseSection.innerHTML = `<div class="room-header">${course.name}</div>`;
+                
+                const courseGrid = document.createElement('div');
+                courseGrid.className = 'grid';
+                courseGrid.style.gridTemplateColumns = `repeat(${ROOMS + 1}, 1fr)`;
+                
+                // Header
+                courseGrid.appendChild(createHeaderCell('Room/Slot'));
+                for(let r = 0; r < ROOMS; r++) {
+                    courseGrid.appendChild(createHeaderCell(`R${r+1}`));
+                }
+                
+                // Slots
+                for(let s = 0; s < SLOTS_PER_DAY; s++) {
+                    courseGrid.appendChild(createHeaderCell(s+1));
+                    for(let r = 0; r < ROOMS; r++) {
+                        const cell = document.createElement('div');
+                        let availableSlot = null;
+                        
+                        for(let d = 0; d < DAYS; d++) {
+                            const slot = schedule[d][r][s];
+                            if(slot.course === course.id && 
+                               slot.students.length < course.maxPerSlot &&
+                               !isStudentBooked(student, d, r, s)) {
+                                availableSlot = { day: d, room: r, slot: s };
+                                break;
+                            }
+                        }
+                        
+                        if(availableSlot) {
+                            cell.className = `slot ${student.timetable[course.id]?.slot === s ? 'selected' : 'available'}`;
+                            cell.onclick = () => selectStudentSlot(student, course.id, availableSlot);
+                            cell.innerHTML = `Day ${availableSlot.day + 1}<br>Available`;
+                        } else {
+                            cell.className = 'slot unavailable';
+                            cell.innerHTML = '✖';
+                        }
+                        courseGrid.appendChild(cell);
+                    }
+                }
+                courseSection.appendChild(courseGrid);
+                grid.appendChild(courseSection);
+            });
+        }
+        
+        function isStudentBooked(student, day, room, slot) {
+            return Object.values(student.timetable).some(booking => 
+                booking.day === day && booking.slot === slot
+            );
+        }
+        
+        function selectStudentSlot(student, courseId, { day, room, slot }) {
+            if(student.timetable[courseId]?.slot === slot) {
+                delete student.timetable[courseId];
+            } else {
+                // Check for time conflicts
+                if(Object.values(student.timetable).some(b => b.day === day && b.slot === slot)) {
+                    alert("Time slot conflict!");
+                    return;
+                }
+                student.timetable[courseId] = { day, room, slot };
+            }
+            renderStudentGrid(student);
+        }
+        
+        function autoSelectStudent() {
+            const student = students[currentStudentIndex];
+            
+            COURSES.forEach(course => {
+                if(student.timetable[course.id]) return;
+                
+                const availableSlots = [];
+                for(let d = 0; d < DAYS; d++) {
+                    for(let r = 0; r < ROOMS; r++) {
+                        for(let s = 0; s < SLOTS_PER_DAY; s++) {
+                            const slot = schedule[d][r][s];
+                            if(slot.course === course.id && 
+                               slot.students.length < course.maxPerSlot &&
+                               !isStudentBooked(student, d, r, s)) {
+                                availableSlots.push({ day: d, room: r, slot: s });
+                            }
+                        }
+                    }
+                }
+                
+                if(availableSlots.length > 0) {
+                    const selected = availableSlots[Math.floor(Math.random() * availableSlots.length)];
+                    student.timetable[course.id] = selected;
+                }
+            });
+            
+            renderStudentGrid(student);
+        }
+        
+        function autoSelect10Students() {
+            const endIndex = Math.min(currentStudentIndex + 10, STUDENTS);
+            while(currentStudentIndex < endIndex) {
+                autoSelectStudent();
+                finalizeStudentSlots();
+            }
+        }
+        
+        function finalizeStudentSlots() {
+            const student = students[currentStudentIndex];
+            
+            if(Object.keys(student.timetable).length !== COURSES.length) {
+                alert("Please select all courses!");
+                return;
+            }
+            
+            // Update schedule
+            COURSES.forEach(course => {
+                const { day, room, slot } = student.timetable[course.id];
+                schedule[day][room][slot].students.push(student.id);
+            });
+            
+            currentStudentIndex++;
+            if(currentStudentIndex < STUDENTS) {
+                startStudentPhase();
+            } else {
+                document.getElementById('studentPhase').style.display = 'none';
+                document.getElementById('viewPhase').style.display = 'block';
+            }
+        }
+        
+        // View Phase Logic
+        function showTimetable() {
+            const view = document.getElementById('viewSelect').value;
+            const container = document.getElementById('timetableView');
+            container.innerHTML = '';
+            
+            if(view === 'teachers') {
+                teachers.forEach(teacher => {
+                    container.appendChild(createTimetable(
+                        teacher.name,
+                        (d, r, s) => schedule[d][r][s].teacher === teacher.id ? 
+                            `${COURSES.find(c => c.id === teacher.course).name}<br>
+                            Students: ${schedule[d][r][s].students.length}` : ''
+                    ));
+                });
+            } else if(view === 'students') {
+                students.slice(0, 20).forEach(student => {
+                    container.appendChild(createTimetable(
+                        student.name,
+                        (d, r, s) => {
+                            const courseId = Object.keys(student.timetable).find(cid => {
+                                const booking = student.timetable[cid];
+                                return booking.day === d && booking.room === r && booking.slot === s;
+                            });
+                            return courseId ? COURSES.find(c => c.id == courseId).name : '';
+                        }
+                    ));
+                });
+            } else if(view === 'rooms') {
+                for(let r = 0; r < ROOMS; r++) {
+                    container.appendChild(createTimetable(
+                        `Room ${r+1}`,
+                        (d, _, s) => {
+                            const slot = schedule[d][r][s];
+                            return slot.course ? 
+                                `${COURSES.find(c => c.id === slot.course).name}<br>
+                                ${teachers.find(t => t.id === slot.teacher).name}<br>
+                                ${slot.students.length} students` : '';
+                        }
+                    ));
+                }
+            }
+        }
+        
+        function createTimetable(title, getCellContent) {
+            const table = document.createElement('table');
+            let html = `<caption>${title}</caption><tr><th>Day/Slot</th>`;
+            
+            for(let s = 1; s <= SLOTS_PER_DAY; s++) html += `<th>${s}</th>`;
+            html += '</tr>';
+            
+            for(let d = 0; d < DAYS; d++) {
+                html += `<tr><td>Day ${d+1}</td>`;
+                for(let s = 0; s < SLOTS_PER_DAY; s++) {
+                    html += `<td>${getCellContent(d, 0, s) || ''}</td>`;
+                }
+                html += '</tr>';
+            }
+            
+            table.innerHTML = html;
+            return table;
+        }
+        
+        function createHeaderCell(text) {
+            const cell = document.createElement('div');
+            cell.className = 'header slot';
+            cell.textContent = text;
+            return cell;
+        }
+        </script>
+</body>
+</html>
